@@ -1,0 +1,27 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./database/connectDB.js');
+const loggerMiddleware = require('./middlewares/logger.js');
+const errorHandler = require('./middlewares/errorHandler.js');
+const ArticleRoute = require('./routes/article.route.js');
+
+const app = express();
+const PORT = process.env.PORT || 3007;
+// Connect to MongoDB
+connectDB();
+
+
+// Middleware
+app.use(express.json());
+app.use(cors('*')); // Allow CORS from any origin   
+app.use(loggerMiddleware); // Custom logging middleware
+app.use('/api', ArticleRoute); // Article routes
+app.use(errorHandler); // Custom error handling middleware
+
+
+
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
