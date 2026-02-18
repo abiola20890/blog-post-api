@@ -7,7 +7,7 @@ const articleSchema = new mongoose.Schema({
         type: String, required: true, minLength: 20, maxLength: 5000
     },
     author: {
-        type: String,  default: 'Guest', maxLength: 50
+        type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, required: true
     },
     comment: {
          type: String, required: false, minLength: 1, maxLength: 1000 

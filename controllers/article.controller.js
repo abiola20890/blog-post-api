@@ -5,7 +5,6 @@ const postArticle = async (req, res, next) => {
     const articleSchema = Joi.object({
         title: Joi.string().min(5).max(100).required(),
         content: Joi.string().min(20).max(5000).required(),
-        author: Joi.string().max(50).default('Guest').optional(),
         comment: Joi.string().min(1).max(1000).optional(),
         status: Joi.string().valid('draft', 'published').default('draft'),
         tags: Joi.string().optional()
@@ -21,7 +20,14 @@ const postArticle = async (req, res, next) => {
         })
     }
     try{
-        const newArticle = new ArticleModel(value);
+        const newArticle = new ArticleModel({
+            title: req.body.title,
+            content: req.body.content,
+            author: req.user._id, // this helps to generate the author of the article, which is the user that is currently logged in
+            comment: req.body.comment,
+            status: req.body.status,
+            tags: req.body.tags
+        });
         await newArticle.save();
         return res.status(201).json({
             message: "Article created successfully",
@@ -40,7 +46,8 @@ const getAllArticle = async (req, res, next) => {
         const {limit = 10, page = 1} = req.query;
         const skip = (page - 1) * limit; // Calculate the number of documents to skip based on the page number and limit
     try{
-        const articles = await ArticleModel.find({})
+        console.log(req.user)
+        const articles = await ArticleModel.find({}).populate('author', 'name _id email')
         .sort({createdAt: -1}) // Sort by createdAt in descending order
         .limit(parseInt(limit)) // Limit the number of results
         .skip(parseInt(skip)); // Skip the appropriate number of documents for pagination
@@ -83,7 +90,6 @@ const updateArticleBYid = async (req, res, next) => {
         const articleSchema = Joi.object({
         title: Joi.string().min(5).max(100).optional(),
         content: Joi.string().min(20).max(5000).optional(),
-        author: Joi.string().max(50).optional(),
         comment: Joi.string().min(1).max(1000).optional(),
         status: Joi.string().valid('draft', 'published').optional(),
         tags: Joi.string().optional()
@@ -94,22 +100,38 @@ const updateArticleBYid = async (req, res, next) => {
     const { error, value } = articleSchema.validate(req.body)
     if (error) {
         return res.status(400).json({
-            message: "Validation error"
+            message: error.details[0].message
         })
+    }
+
+    if (Object.keys(value).length === 0) {
+        return res.status(400).json({
+            message: "At least one field must be provided for update"
+        }) // This checks if the validated value object is empty, meaning no fields were provided for update. If it's empty, it returns a 400 Bad Request response with an appropriate message.
 
     }
     try{
-        const updatedArticle = await ArticleModel.findByIdAndUpdate(req.params.id, value, {
-            new: true,
-            runValidators: true});
+        const updatedArticle = await ArticleModel.findById(req.params.id)
+            
+
         if (!updatedArticle) {
             return res.status(404).json({
                 message: `Article with ID ${req.params.id} not found`})
         }
+        if (updatedArticle.author.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "You are not authorized to update this article"
+            })
+        }
+        Object.assign(updatedArticle, value)
+        await updatedArticle.save()
+        
+
         return res.status(200).json({
             message: "Article updated successfully",
             data: updatedArticle
         })
+
 
     } catch (error) {
         console.error("Error updating article:", error);
@@ -119,11 +141,21 @@ const updateArticleBYid = async (req, res, next) => {
 
 const deleteArticleBYid = async (req, res, next) => {
     try{
-        const deletedArticle = await ArticleModel.findByIdAndDelete(req.params.id);
+        const deletedArticle = await ArticleModel.findById(req.params.id);
+        
         if (!deletedArticle) {
             return res.status(404).json({
              message: `Article with ID ${req.params.id} not found`})
         }
+        if (deletedArticle.author.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "You are not authorized to delete this article"
+            })
+        }
+        
+        
+        await deletedArticle.remove()
+
         return res.status(200).json({
             message: "Article deleted successfully",
             data: deletedArticle

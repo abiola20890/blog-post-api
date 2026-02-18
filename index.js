@@ -5,6 +5,7 @@ const connectDB = require('./database/connectDB.js');
 const loggerMiddleware = require('./middlewares/logger.js');
 const errorHandler = require('./middlewares/errorHandler.js');
 const ArticleRoute = require('./routes/article.route.js');
+const UserRoute = require('./routes/user.route.js');
 
 const app = express();
 const PORT = process.env.PORT || 3007;
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use(cors('*')); // Allow CORS from any origin   
 app.use(loggerMiddleware); // Custom logging middleware
 app.use('/api', ArticleRoute); // Article routes
+app.use('/api/users', UserRoute); // User routes
 app.use(errorHandler); // Custom error handling middleware
 
 

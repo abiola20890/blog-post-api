@@ -4,13 +4,14 @@ const express = require('express');
 const articleController = require('../controllers/article.controller.js');
 
 const router = express.Router(); // Create a new router instance
+const requireAuth = require('../middlewares/requireAuth.js');
 
-router.post('/articles', articleController.postArticle);
-router.get('/articles', articleController.getAllArticle);
-router.get('/articles/search', articleController.searchArticle);
-router.get('/articles/:id', articleController.getArticleBYid);
-router.put('/articles/:id', articleController.updateArticleBYid);
-router.delete('/articles/:id', articleController.deleteArticleBYid);
+router.post('/articles', requireAuth, articleController.postArticle);
+router.get('/articles', requireAuth, articleController.getAllArticle);
+router.get('/articles/search', requireAuth, articleController.searchArticle);
+router.get('/articles/:id', requireAuth, articleController.getArticleBYid);
+router.put('/articles/:id', requireAuth, articleController.updateArticleBYid);
+router.delete('/articles/:id', requireAuth, articleController.deleteArticleBYid);
 
 
 
