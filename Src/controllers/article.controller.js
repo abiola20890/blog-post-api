@@ -1,24 +1,7 @@
-const Joi = require("joi")
 const ArticleModel = require("../models/article.model.js")
 
 const postArticle = async (req, res, next) => {
-    const articleSchema = Joi.object({
-        title: Joi.string().min(5).max(100).required(),
-        content: Joi.string().min(20).max(5000).required(),
-        comment: Joi.string().min(1).max(1000).optional(),
-        status: Joi.string().valid('draft', 'published').default('draft'),
-        tags: Joi.string().optional()
-    
-    })
-
-    const { error, value } = articleSchema.validate(req.body)
-    if (error) {
-        return res.status(400).json
-        ({
-            message: "Validation error",
-            details: error.details.map(detail => detail.message)
-        })
-    }
+  
     try{
         const newArticle = new ArticleModel({
             title: req.body.title,
@@ -87,57 +70,50 @@ const getArticleBYid = async (req, res, next) => {
 }
 
 const updateArticleBYid = async (req, res, next) => {
-        const articleSchema = Joi.object({
-        title: Joi.string().min(5).max(100).optional(),
-        content: Joi.string().min(20).max(5000).optional(),
-        comment: Joi.string().min(1).max(1000).optional(),
-        status: Joi.string().valid('draft', 'published').optional(),
-        tags: Joi.string().optional()
-    
-    })
+  const { title, content, comment, status, tags } = req.body;
 
+  try {
+    const article = await ArticleModel.findById(req.params.id);
 
-    const { error, value } = articleSchema.validate(req.body)
-    if (error) {
-        return res.status(400).json({
-            message: error.details[0].message
-        })
+    if (!article) {
+      return res.status(404).json({
+        message: `Article with ID ${req.params.id} not found`
+      });
     }
 
-    if (Object.keys(value).length === 0) {
-        return res.status(400).json({
-            message: "At least one field must be provided for update"
-        }) // This checks if the validated value object is empty, meaning no fields were provided for update. If it's empty, it returns a 400 Bad Request response with an appropriate message.
-
+    // Authorization check
+    if (article.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        message: "You are not authorized to update this article"
+      });
     }
-    try{
-        const updatedArticle = await ArticleModel.findById(req.params.id)
-            
 
-        if (!updatedArticle) {
-            return res.status(404).json({
-                message: `Article with ID ${req.params.id} not found`})
-        }
-        if (updatedArticle.author.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                message: "You are not authorized to update this article"
-            })
-        }
-        Object.assign(updatedArticle, value)
-        await updatedArticle.save()
-        
-
-        return res.status(200).json({
-            message: "Article updated successfully",
-            data: updatedArticle
-        })
-
-
-    } catch (error) {
-        console.error("Error updating article:", error);
-        next(error)
+    // Ensure at least one field is provided
+    if (!title && !content && !comment && !status && !tags) {
+      return res.status(400).json({
+        message: "At least one field must be provided for update"
+      });
     }
-}
+
+    // Apply updates
+    if (title) article.title = title;
+    if (content) article.content = content;
+    if (comment) article.comment = comment;
+    if (status) article.status = status;
+    if (tags) article.tags = tags;
+
+    await article.save();
+
+    return res.status(200).json({
+      message: "Article updated successfully",
+      data: article
+    });
+
+  } catch (error) {
+    console.error("Error updating article:", error);
+    next(error);
+  }
+};
 
 const deleteArticleBYid = async (req, res, next) => {
     try{

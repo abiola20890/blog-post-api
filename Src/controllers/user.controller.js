@@ -1,25 +1,13 @@
 const UserModel = require("../models/user.model")
 
-const Joi = require("joi")
 
 const jwt = require("jsonwebtoken")
 
-const bcrypt = require("bcrypt")
+const { hashPassword, comparePassword } = require("../utils/bcrypt");
 
 
 
 const registerUser = async (req, res,next) => {
-    const registerSchema = Joi.object({
-        name: Joi.string().min(2).max(50).required(),
-        email: Joi.string().email().required(),
-        password: Joi.string().min(6).max(100).required()
-    })
-
-    const {error} = registerSchema.validate(req.body)
-    if (error) {
-        return res.status(400).json({
-            message: error.details[0].message})
-    }
     try {
 
   const {email, name, password} = req.body;
@@ -29,9 +17,8 @@ const registerUser = async (req, res,next) => {
       message: "User already exists"
     })
   }
-  const salt = await bcrypt.genSalt(12)
-  const hashedPassword = await bcrypt.hash(password, salt)
-
+  const hashedPassword = await hashPassword(password);
+ 
   const user = new UserModel({
     name: name,
     email: email,
@@ -40,8 +27,12 @@ const registerUser = async (req, res,next) => {
   await user.save()
   res.status(201).json({
     message: "User registered successfully",
-    user: user
-  })
+    user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+    }
+});
     } catch (error) {
         console.error("Error registering user:", error);
         next(error)
@@ -50,15 +41,7 @@ const registerUser = async (req, res,next) => {
 }
 
 const loginUser = async (req, res, next) => {
-    const loginSchema = Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().min(6).max(100).required()
-    })
-    const {error} = loginSchema.validate(req.body)
-    if (error) {
-        return res.status(400).json({
-            message: error.details[0].message})
-    }
+
     try {
         const {email, password} = req.body;
         const user = await UserModel.findOne({email: email})
@@ -67,7 +50,7 @@ const loginUser = async (req, res, next) => {
                 message: "User does not exist"
             })
         }
-        const isPasswordValid = await bcrypt.compare(password, user.password)
+        const isPasswordValid = await comparePassword(password, user.password)
         if (!isPasswordValid) {
             return res.status(401).json({
                 message: "Invalid Credentials"
