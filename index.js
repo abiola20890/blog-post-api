@@ -1,10 +1,12 @@
-require('dotenv').config();
+
+// Load and validate config first
+const { mongoURI, port } = require('./Src/config/config.js');
 const connectDB = require('./Src/config/connectDB.js');
 
 const app = require('./Src/app.js');
 
-const PORT = process.env.PORT || 3007;
-app.listen(PORT, async () => {
-    await connectDB();
-    console.log(`Server is running on port ${PORT}`);
+
+app.listen(port, async () => {
+    await connectDB(mongoURI); // pass validated URI to connectDB
+    console.log(`Server is running on port ${port}`);
 });
